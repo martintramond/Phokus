@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Suivi photos — invités clés</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink: #f2ede4;
+    --ink-dim: #b9b2a4;
+    --bg: #1c1a17;
+    --bg-raised: #262320;
+    --bg-card: #2c2824;
+    --gold: #c9a66b;
+    --gold-dim: #8a7455;
+    --sage: #8fa885;
+    --line: #423c34;
+    --danger: #b6725f;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    padding: 28px 16px 60px;
+  }
+  .wrap{ max-width: 640px; margin: 0 auto; }
+
+  header{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    margin-bottom:22px;
+    padding-bottom:18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .eyebrow{
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color: var(--gold);
+    font-weight:600;
+  }
+  h1{
+    font-family:'Fraunces', serif;
+    font-weight:500;
+    font-size: 30px;
+    margin:0;
+    line-height:1.15;
+  }
+  .subline{
+    color: var(--ink-dim);
+    font-size: 13.5px;
+    margin-top:2px;
+  }
+
+  .stats{
+    display:flex;
+    gap: 18px;
+    margin-bottom: 20px;
+  }
+  .stat{
+    flex:1;
+    background: var(--bg-raised);
+    border:1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .stat .num{ font-family:'Fraunces', serif; font-size:22px; color: var(--gold); }
+  .stat .lbl{ font-size:11.5px; color: var(--ink-dim); text-transform:uppercase; letter-spacing:.06em; margin-top:2px;}
+
+  .action-row{
+    display:flex;
+    gap:8px;
+    margin-bottom: 14px;
+  }
+  .secondary-btn{
+    flex:1;
+    background: var(--bg-raised);
+    border:1px dashed var(--gold-dim);
+    color: var(--gold);
+    border-radius: 10px;
+    padding: 12px 10px;
+    font-size: 13.5px;
+    font-weight:600;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+  }
+  .secondary-btn:active{ transform: scale(.98); }
+
+  form.add{
+    display:flex;
+    gap:8px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+    align-items:center;
+  }
+  .photo-picker{
+    width:44px; height:44px;
+    border-radius:50%;
+    border:1px dashed var(--line);
+    background: var(--bg-raised);
+    display:flex; align-items:center; justify-content:center;
+    color: var(--ink-dim);
+    font-size:18px;
+    flex-shrink:0;
+    overflow:hidden;
+    position:relative;
+  }
+  .photo-picker img{ width:100%; height:100%; object-fit:cover; }
+  form.add input[type=text]{
+    flex: 1 1 160px;
+    background: var(--bg-raised);
+    border:1px solid var(--line);
+    color: var(--ink);
+    border-radius: 8px;
+    padding: 11px 12px;
+    font-size:14.5px;
+    font-family:'Inter',sans-serif;
+  }
+  form.add input[type=text]::placeholder{ color: #756b5c; }
+  .target-field{
+    display:flex;
+    align-items:center;
+    background: var(--bg-raised);
+    border:1px solid var(--line);
+    border-radius: 8px;
+    overflow:hidden;
+  }
+  .target-field span{
+    font-size: 11px;
+    color: var(--ink-dim);
+    padding: 0 8px;
+    white-space:nowrap;
+  }
+  .target-field input[type=number]{
+    width: 46px;
+    background:transparent;
+    border:none;
+    color: var(--ink);
+    font-size: 14.5px;
+    padding: 11px 4px 11px 0;
+    font-family:'Inter',sans-serif;
+  }
+  .target-field input[type=number]:focus{ outline:none; }
+  button{ font-family:'Inter',sans-serif; cursor:pointer; }
+  .btn-add{
+    background: var(--gold);
+    color: #24201a;
+    border:none;
+    border-radius: 8px;
+    padding: 0 18px;
+    height:44px;
+    font-weight:600;
+    font-size:14px;
+  }
+  .btn-add:active{ transform: scale(.97); }
+
+  .filter-row{
+    display:flex;
+    gap:8px;
+    margin-bottom:14px;
+  }
+  .chip{
+    background:transparent;
+    border:1px solid var(--line);
+    color: var(--ink-dim);
+    border-radius: 999px;
+    padding: 6px 13px;
+    font-size:12.5px;
+  }
+  .chip.active{
+    border-color: var(--gold-dim);
+    color: var(--gold);
+    background: rgba(201,166,107,0.08);
+  }
+
+  .list{ display:flex; flex-direction:column; gap:10px; }
+
+  .card{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    background: var(--bg-card);
+    border:1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .card.done{ border-color: rgba(143,168,133,0.45); }
+
+  .ring-wrap{ position:relative; width:88px; height:88px; flex-shrink:0; }
+  .ring-wrap svg{ width:88px; height:88px; transform: rotate(-90deg); position:absolute; top:0; left:0; }
+  .ring-bg{ fill:none; stroke: var(--line); stroke-width:5; }
+  .ring-fg{ fill:none; stroke: var(--gold); stroke-width:5; stroke-linecap:round; transition: stroke-dashoffset .25s ease; }
+  .card.done .ring-fg{ stroke: var(--sage); }
+  .initials{
+    position:absolute; inset:7px;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Fraunces',serif;
+    font-size:24px;
+    color: var(--ink);
+    background: var(--bg-raised);
+    overflow:hidden;
+  }
+  .initials img{ width:100%; height:100%; object-fit:cover; }
+  .photo-edit-badge{
+    position:absolute; bottom:2px; right:2px;
+    width:24px; height:24px;
+    border-radius:50%;
+    background: var(--gold);
+    color:#24201a;
+    font-size:12px;
+    display:flex; align-items:center; justify-content:center;
+    border: 2px solid var(--bg-card);
+  }
+
+  .info{ flex:1; min-width:0; }
+  .name{
+    font-family:'Fraunces', serif;
+    font-size: 16.5px;
+    font-weight:500;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    background:none;
+    border:none;
+    color: var(--ink);
+    padding:0;
+    width:100%;
+    text-align:left;
+  }
+  .count-line{
+    font-size:12.5px;
+    color: var(--ink-dim);
+    margin-top:2px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .count-line b{ color: var(--gold); font-weight:600; }
+  .card.done .count-line b{ color: var(--sage); }
+  .target-edit{
+    background:none; border:none; border-bottom:1px dotted var(--ink-dim); color: var(--ink-dim);
+    font-size:12.5px; padding:0; width:28px; font-family:'Inter',sans-serif;
+  }
+  .target-edit:focus{ outline:none; border-bottom-color: var(--gold); color: var(--gold); }
+
+  .controls{ display:flex; align-items:center; gap:6px; flex-shrink:0; }
+  .step-btn{
+    width:34px; height:34px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background: var(--bg-raised);
+    color: var(--ink);
+    font-size:17px;
+    display:flex; align-items:center; justify-content:center;
+    line-height:1;
+  }
+  .step-btn.plus{
+    background: var(--gold);
+    color:#24201a;
+    border:none;
+    font-weight:700;
+  }
+  .step-btn:active{ transform: scale(.94); }
+  .remove-btn{
+    background:none; border:none; color:#756b5c;
+    font-size:12px; padding:4px 2px;
+  }
+  .remove-btn:hover{ color: var(--danger); }
+
+  .empty{
+    text-align:center;
+    color: var(--ink-dim);
+    padding: 40px 10px;
+    font-size:14px;
+    border:1px dashed var(--line);
+    border-radius:12px;
+  }
+  .empty b{ display:block; font-family:'Fraunces',serif; font-size:18px; color:var(--ink); margin-bottom:6px; }
+
+  footer{
+    margin-top: 26px;
+    padding-top:16px;
+    border-top:1px solid var(--line);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+  }
+  .ghost-btn{
+    background:none;
+    border:none;
+    color: var(--ink-dim);
+    font-size:12.5px;
+    text-decoration: underline;
+  }
+  .save-note{ font-size:11.5px; color:#756b5c; }
+
+  /* modal */
+  .modal-overlay{
+    position:fixed; inset:0;
+    background: rgba(10,9,7,0.82);
+    display:none;
+    align-items:flex-start;
+    justify-content:center;
+    padding: 24px 14px;
+    overflow-y:auto;
+    z-index: 50;
+  }
+  .modal-overlay.open{ display:flex; }
+  .modal{
+    background: var(--bg-raised);
+    border:1px solid var(--line);
+    border-radius: 14px;
+    max-width: 600px;
+    width:100%;
+    padding: 20px;
+  }
+  .modal h2{
+    font-family:'Fraunces',serif;
+    font-weight:500;
+    font-size:20px;
+    margin:0 0 4px;
+  }
+  .modal p.hint{
+    color: var(--ink-dim);
+    font-size:13px;
+    margin:0 0 14px;
+    line-height:1.5;
+  }
+  .modal input[type=file]{
+    color: var(--ink-dim);
+    font-size:13px;
+    margin-bottom: 12px;
+  }
+  .crop-canvas-wrap{
+    width:100%;
+    background:#100f0d;
+    border:1px solid var(--line);
+    border-radius:10px;
+    overflow:hidden;
+    display:flex;
+    justify-content:center;
+    margin-bottom:14px;
+    touch-action:none;
+  }
+  #cropCanvas{ display:block; max-width:100%; cursor:crosshair; }
+  .modal-row{ display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+  .session-thumbs{
+    display:flex; gap:8px; flex-wrap:wrap;
+    margin-bottom: 16px;
+    min-height: 4px;
+  }
+  .session-thumb{
+    width:46px; height:46px;
+    border-radius:8px;
+    overflow:hidden;
+    border:1px solid var(--gold-dim);
+  }
+  .session-thumb img{ width:100%; height:100%; object-fit:cover; }
+  .modal-footer{
+    display:flex; justify-content:flex-end; gap:10px;
+  }
+  .btn-plain{
+    background:none; border:1px solid var(--line); color: var(--ink-dim);
+    border-radius:8px; padding:10px 16px; font-size:13.5px;
+  }
+  .hidden-input{ display:none; }
+
+  @media (max-width:400px){
+    h1{ font-size:26px; }
+    .stats{ gap:10px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Reportage du jour</div>
+    <h1>Liste de prises</h1>
+    <div class="subline">Comptez les photos prises de chaque invité clé, avec leur visage sous les yeux pour les repérer au cocktail.</div>
+  </header>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="num" id="statDone">0</div>
+      <div class="lbl">Objectifs atteints</div>
+    </div>
+    <div class="stat">
+      <div class="num" id="statTotal">0</div>
+      <div class="lbl">Invités suivis</div>
+    </div>
+    <div class="stat">
+      <div class="num" id="statShots">0</div>
+      <div class="lbl">Photos comptées</div>
+    </div>
+  </div>
+
+  <div class="action-row">
+    <button type="button" class="secondary-btn" id="openCropModalBtn">🖼️ Découper une photo de groupe</button>
+  </div>
+
+  <form class="add" id="addForm">
+    <div class="photo-picker" id="newPhotoPicker">
+      <span>+</span>
+      <input type="file" accept="image/*" capture="environment" class="hidden-input" id="newPhotoInput">
+    </div>
+    <input type="text" id="nameInput" placeholder="Nom de l'invité" maxlength="60" required>
+    <div class="target-field">
+      <span>Objectif</span>
+      <input type="number" id="targetInput" value="5" min="1" max="99">
+    </div>
+    <button type="submit" class="btn-add">Ajouter</button>
+  </form>
+
+  <div class="filter-row">
+    <button class="chip active" data-filter="all">Tous</button>
+    <button class="chip" data-filter="pending">À faire</button>
+    <button class="chip" data-filter="done">Terminés</button>
+  </div>
+
+  <div class="list" id="list"></div>
+
+  <div class="empty" id="emptyState" style="display:none;">
+    <b>Aucun invité pour l'instant</b>
+    Ajoutez les personnes importantes du mariage ci-dessus, ou découpez une photo de groupe.
+  </div>
+
+  <footer>
+    <button class="ghost-btn" id="resetCountsBtn">Remettre tous les compteurs à zéro</button>
+    <span class="save-note" id="saveNote"></span>
+  </footer>
+
+</div>
+
+<input type="file" accept="image/*" class="hidden-input" id="guestPhotoInput">
+
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal" style="max-width:400px;">
+    <h2 id="confirmTitle">Confirmer</h2>
+    <p class="hint" id="confirmMessage"></p>
+    <div class="modal-footer">
+      <button type="button" class="btn-plain" id="confirmCancelBtn">Annuler</button>
+      <button type="button" class="btn-add" id="confirmOkBtn" style="height:40px;">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="cropModal">
+  <div class="modal">
+    <h2>Découper une photo de groupe</h2>
+    <p class="hint">Choisissez une photo de famille, puis dessinez un cadre autour de chaque visage (clic-glisser, ou doigt sur mobile). Un invité est créé automatiquement à chaque cadre — renommez-les ensuite dans la liste.</p>
+    <input type="file" accept="image/*" id="groupPhotoInput">
+    <div class="crop-canvas-wrap">
+      <canvas id="cropCanvas" width="10" height="10"></canvas>
+    </div>
+    <div class="modal-row">
+      <span style="font-size:12.5px;color:var(--ink-dim);">Objectif par défaut pour les invités créés ici :</span>
+      <div class="target-field">
+        <input type="number" id="modalTargetInput" value="5" min="1" max="99">
+      </div>
+    </div>
+    <div class="session-thumbs" id="sessionThumbs"></div>
+    <div class="modal-footer">
+      <button type="button" class="btn-plain" id="closeCropModalBtn">Terminer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'guests-list-v2';
+  let guests = [];
+  let currentFilter = 'all';
+
+  const listEl = document.getElementById('list');
+  const emptyEl = document.getElementById('emptyState');
+  const saveNote = document.getElementById('saveNote');
+  const statDone = document.getElementById('statDone');
+  const statTotal = document.getElementById('statTotal');
+  const statShots = document.getElementById('statShots');
+  const guestPhotoInput = document.getElementById('guestPhotoInput');
+  let pendingPhotoTargetId = null; // guest id currently receiving a photo, or 'new' for the add form
+
+  function initials(name){
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if(parts.length === 0) return '?';
+    if(parts.length === 1) return parts[0].slice(0,2).toUpperCase();
+    return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+  }
+
+  function uid(){
+    return 'g_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7);
+  }
+
+  function nextInviteNumber(){
+    let max = 0;
+    guests.forEach(g => {
+      const m = g.name.match(/^Invité (\d+)$/);
+      if(m) max = Math.max(max, parseInt(m[1], 10));
+    });
+    return max + 1;
+  }
+
+  function loadImageFromFile(file){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function imageToDataURL(img, maxDim, quality){
+    const w = img.naturalWidth, h = img.naturalHeight;
+    const scale = Math.min(1, maxDim / Math.max(w, h));
+    const outW = Math.max(1, Math.round(w * scale));
+    const outH = Math.max(1, Math.round(h * scale));
+    const c = document.createElement('canvas');
+    c.width = outW; c.height = outH;
+    c.getContext('2d').drawImage(img, 0, 0, outW, outH);
+    return c.toDataURL('image/jpeg', quality);
+  }
+
+  const SUPABASE_URL = 'https://caxwafugyvfvfdhxeumc.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_pUfTlOTRbI6zAu7rG46guA_PNcyVeb1';
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  let saveTimer = null;
+
+  async function loadGuests(){
+    try{
+      const { data, error } = await sb.from('app_state').select('data').eq('id', 1).single();
+      guests = (!error && data && Array.isArray(data.data)) ? data.data : [];
+    }catch(e){
+      guests = [];
+    }
+    render();
+  }
+
+  function saveGuests(){
+    saveNote.textContent = 'Enregistrement…';
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async () => {
+      try{
+        const { error } = await sb.from('app_state')
+          .update({ data: guests, updated_at: new Date().toISOString() })
+          .eq('id', 1);
+        saveNote.textContent = error ? "Échec de l'enregistrement" : 'Enregistré';
+      }catch(e){
+        saveNote.textContent = "Échec de l'enregistrement";
+      }
+      setTimeout(()=>{ if(saveNote.textContent==='Enregistré') saveNote.textContent=''; }, 1200);
+    }, 350);
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  const confirmModal = document.getElementById('confirmModal');
+  const confirmTitle = document.getElementById('confirmTitle');
+  const confirmMessage = document.getElementById('confirmMessage');
+  const confirmOkBtn = document.getElementById('confirmOkBtn');
+  const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+
+  function showConfirm(title, message){
+    return new Promise(resolve => {
+      confirmTitle.textContent = title;
+      confirmMessage.textContent = message;
+      confirmModal.classList.add('open');
+      function cleanup(result){
+        confirmModal.classList.remove('open');
+        confirmOkBtn.removeEventListener('click', onOk);
+        confirmCancelBtn.removeEventListener('click', onCancel);
+        resolve(result);
+      }
+      function onOk(){ cleanup(true); }
+      function onCancel(){ cleanup(false); }
+      confirmOkBtn.addEventListener('click', onOk);
+      confirmCancelBtn.addEventListener('click', onCancel);
+    });
+  }
+
+  function render(){
+    const total = guests.length;
+    const done = guests.filter(g => g.count >= g.target).length;
+    const shots = guests.reduce((s,g)=>s+g.count,0);
+    statDone.textContent = done;
+    statTotal.textContent = total;
+    statShots.textContent = shots;
+
+    let visible = guests;
+    if(currentFilter === 'pending') visible = guests.filter(g => g.count < g.target);
+    if(currentFilter === 'done') visible = guests.filter(g => g.count >= g.target);
+
+    listEl.innerHTML = '';
+    emptyEl.style.display = (total === 0) ? 'block' : 'none';
+
+    if(total > 0 && visible.length === 0){
+      const msg = document.createElement('div');
+      msg.className = 'empty';
+      msg.innerHTML = '<b>Rien ici</b>Aucun invité ne correspond à ce filtre.';
+      listEl.appendChild(msg);
+      return;
+    }
+
+    visible.forEach(g => {
+      const isDone = g.count >= g.target;
+      const pct = Math.min(1, g.count / g.target);
+      const r = 38, circumference = 2*Math.PI*r;
+      const offset = circumference * (1 - pct);
+
+      const card = document.createElement('div');
+      card.className = 'card' + (isDone ? ' done' : '');
+      card.innerHTML = `
+        <div class="ring-wrap">
+          <svg viewBox="0 0 88 88">
+            <circle class="ring-bg" cx="44" cy="44" r="${r}"></circle>
+            <circle class="ring-fg" cx="44" cy="44" r="${r}"
+              stroke-dasharray="${circumference}"
+              stroke-dashoffset="${offset}"></circle>
+          </svg>
+          <div class="initials" data-action="editphoto" data-id="${g.id}">
+            ${g.photo ? `<img src="${g.photo}" alt="">` : initials(g.name)}
+          </div>
+          <div class="photo-edit-badge" data-action="editphoto" data-id="${g.id}">✎</div>
+        </div>
+        <div class="info">
+          <input class="name" data-action="rename" data-id="${g.id}" value="${escapeHtml(g.name)}">
+          <div class="count-line">
+            <b>${g.count}</b> / <input type="number" class="target-edit" data-action="settarget" data-id="${g.id}" value="${g.target}" min="1" max="99"> photos
+            ${isDone ? '· ✓ objectif atteint' : ''}
+          </div>
+        </div>
+        <div class="controls">
+          <button class="step-btn minus" data-action="minus" data-id="${g.id}" aria-label="Retirer une photo">–</button>
+          <button class="step-btn plus" data-action="plus" data-id="${g.id}" aria-label="Ajouter une photo">+</button>
+        </div>
+        <button class="remove-btn" data-action="remove" data-id="${g.id}" title="Retirer de la liste">✕</button>
+      `;
+      listEl.appendChild(card);
+    });
+  }
+
+  listEl.addEventListener('click', async function(e){
+    const el = e.target.closest('[data-action]');
+    if(!el) return;
+    const action = el.dataset.action;
+    const id = el.dataset.id;
+    const g = guests.find(x => x.id === id);
+    if(!g) return;
+
+    if(action === 'plus'){
+      g.count += 1; render(); saveGuests();
+    } else if(action === 'minus'){
+      g.count = Math.max(0, g.count - 1); render(); saveGuests();
+    } else if(action === 'remove'){
+      const ok = await showConfirm('Retirer cet invité ?', `"${g.name}" sera retiré de la liste et son compteur perdu.`);
+      if(ok){
+        guests = guests.filter(x => x.id !== id);
+        render(); saveGuests();
+      }
+    } else if(action === 'editphoto'){
+      pendingPhotoTargetId = id;
+      guestPhotoInput.click();
+    }
+  });
+
+  listEl.addEventListener('change', function(e){
+    if(e.target.dataset.action === 'rename'){
+      const id = e.target.dataset.id;
+      const g = guests.find(x => x.id === id);
+      if(g){
+        const v = e.target.value.trim();
+        g.name = v || g.name;
+        saveGuests();
+      }
+    } else if(e.target.dataset.action === 'settarget'){
+      const id = e.target.dataset.id;
+      const g = guests.find(x => x.id === id);
+      if(g){
+        const n = parseInt(e.target.value, 10);
+        g.target = (n && n > 0) ? n : g.target;
+        e.target.value = g.target;
+        render();
+        saveGuests();
+      }
+    }
+  });
+
+  guestPhotoInput.addEventListener('change', async function(){
+    const file = guestPhotoInput.files[0];
+    guestPhotoInput.value = '';
+    if(!file || !pendingPhotoTargetId) return;
+    try{
+      const img = await loadImageFromFile(file);
+      const dataURL = imageToDataURL(img, 260, 0.78);
+      if(pendingPhotoTargetId === 'new'){
+        document.getElementById('newPhotoPicker').dataset.pendingPhoto = dataURL;
+        document.getElementById('newPhotoPicker').innerHTML = `<img src="${dataURL}" alt="">`;
+      } else {
+        const g = guests.find(x => x.id === pendingPhotoTargetId);
+        if(g){ g.photo = dataURL; render(); saveGuests(); }
+      }
+    }catch(err){
+      saveNote.textContent = "Impossible de charger cette photo";
+      setTimeout(()=>{ saveNote.textContent=''; }, 2500);
+    }
+    pendingPhotoTargetId = null;
+  });
+
+  document.getElementById('newPhotoPicker').addEventListener('click', function(){
+    pendingPhotoTargetId = 'new';
+    guestPhotoInput.click();
+  });
+
+  document.getElementById('addForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    const nameInput = document.getElementById('nameInput');
+    const targetInput = document.getElementById('targetInput');
+    const picker = document.getElementById('newPhotoPicker');
+    const name = nameInput.value.trim();
+    let target = parseInt(targetInput.value, 10);
+    if(!name) return;
+    if(!target || target < 1) target = 1;
+    const photo = picker.dataset.pendingPhoto || null;
+    guests.push({ id: uid(), name, target, count: 0, photo });
+    nameInput.value = '';
+    targetInput.value = 5;
+    delete picker.dataset.pendingPhoto;
+    picker.innerHTML = '<span>+</span>';
+    render();
+    saveGuests();
+    nameInput.focus();
+  });
+
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      currentFilter = chip.dataset.filter;
+      render();
+    });
+  });
+
+  document.getElementById('resetCountsBtn').addEventListener('click', async () => {
+    if(guests.length === 0) return;
+    const ok = await showConfirm('Remettre les compteurs à zéro ?', 'Les invités et leurs objectifs restent en place, seuls les compteurs de photos repartent à zéro.');
+    if(ok){
+      guests.forEach(g => g.count = 0);
+      render(); saveGuests();
+    }
+  });
+
+  // ---- Group photo crop tool ----
+  const cropModal = document.getElementById('cropModal');
+  const groupPhotoInput = document.getElementById('groupPhotoInput');
+  const cropCanvas = document.getElementById('cropCanvas');
+  const cropCtx = cropCanvas.getContext('2d');
+  const sessionThumbs = document.getElementById('sessionThumbs');
+  const modalTargetInput = document.getElementById('modalTargetInput');
+  let groupImg = null;
+  let dispScale = 1;
+  let dragging = false;
+  let startX = 0, startY = 0;
+
+  document.getElementById('openCropModalBtn').addEventListener('click', () => {
+    cropModal.classList.add('open');
+  });
+  document.getElementById('closeCropModalBtn').addEventListener('click', () => {
+    cropModal.classList.remove('open');
+    groupImg = null;
+    groupPhotoInput.value = '';
+    sessionThumbs.innerHTML = '';
+    cropCanvas.width = 10; cropCanvas.height = 10;
+  });
+
+  function drawBase(){
+    if(!groupImg) return;
+    cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
+    cropCtx.drawImage(groupImg, 0, 0, cropCanvas.width, cropCanvas.height);
+  }
+
+  groupPhotoInput.addEventListener('change', async function(){
+    const file = groupPhotoInput.files[0];
+    if(!file) return;
+    try{
+      const img = await loadImageFromFile(file);
+      groupImg = img;
+      const wrapWidth = cropCanvas.parentElement.clientWidth || 560;
+      const maxW = Math.min(560, wrapWidth);
+      dispScale = maxW / img.naturalWidth;
+      cropCanvas.width = Math.round(maxW);
+      cropCanvas.height = Math.round(img.naturalHeight * dispScale);
+      drawBase();
+    }catch(err){
+      saveNote.textContent = "Impossible de charger cette photo de groupe";
+      setTimeout(()=>{ saveNote.textContent=''; }, 2500);
+    }
+  });
+
+  function canvasPointFromEvent(e){
+    const rect = cropCanvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: (clientX - rect.left) * (cropCanvas.width / rect.width),
+      y: (clientY - rect.top) * (cropCanvas.height / rect.height)
+    };
+  }
+
+  function onDragStart(e){
+    if(!groupImg) return;
+    e.preventDefault();
+    const p = canvasPointFromEvent(e);
+    startX = p.x; startY = p.y;
+    dragging = true;
+  }
+
+  function onDragMove(e){
+    if(!dragging || !groupImg) return;
+    e.preventDefault();
+    const p = canvasPointFromEvent(e);
+    drawBase();
+    const x = Math.min(startX, p.x), y = Math.min(startY, p.y);
+    const w = Math.abs(p.x - startX), h = Math.abs(p.y - startY);
+    cropCtx.strokeStyle = '#c9a66b';
+    cropCtx.lineWidth = 2;
+    cropCtx.fillStyle = 'rgba(201,166,107,0.18)';
+    cropCtx.fillRect(x, y, w, h);
+    cropCtx.strokeRect(x, y, w, h);
+  }
+
+  function onDragEnd(e){
+    if(!dragging || !groupImg) return;
+    dragging = false;
+    const p = canvasPointFromEvent(e.changedTouches ? {touches:[e.changedTouches[0]]} : e);
+    const x = Math.min(startX, p.x), y = Math.min(startY, p.y);
+    const w = Math.abs(p.x - startX), h = Math.abs(p.y - startY);
+    drawBase();
+    if(w < 16 || h < 16) return; // too small, ignore
+
+    const sx = x / dispScale, sy = y / dispScale;
+    const sw = w / dispScale, sh = h / dispScale;
+
+    const maxDim = 220;
+    const scale = Math.min(1, maxDim / Math.max(sw, sh));
+    const outW = Math.max(1, Math.round(sw * scale));
+    const outH = Math.max(1, Math.round(sh * scale));
+    const off = document.createElement('canvas');
+    off.width = outW; off.height = outH;
+    off.getContext('2d').drawImage(groupImg, sx, sy, sw, sh, 0, 0, outW, outH);
+    const dataURL = off.toDataURL('image/jpeg', 0.8);
+
+    let target = parseInt(modalTargetInput.value, 10);
+    if(!target || target < 1) target = 5;
+
+    const name = `Invité ${nextInviteNumber()}`;
+    guests.push({ id: uid(), name, target, count: 0, photo: dataURL });
+    render();
+    saveGuests();
+
+    const thumb = document.createElement('div');
+    thumb.className = 'session-thumb';
+    thumb.innerHTML = `<img src="${dataURL}" alt="">`;
+    sessionThumbs.appendChild(thumb);
+  }
+
+  cropCanvas.addEventListener('mousedown', onDragStart);
+  cropCanvas.addEventListener('mousemove', onDragMove);
+  window.addEventListener('mouseup', onDragEnd);
+  cropCanvas.addEventListener('touchstart', onDragStart, {passive:false});
+  cropCanvas.addEventListener('touchmove', onDragMove, {passive:false});
+  cropCanvas.addEventListener('touchend', onDragEnd, {passive:false});
+
+  loadGuests();
+})();
+</script>
+</body>
+</html>
