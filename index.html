@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<title>Suivi photos — invités clés</title>
+<title>Fokus — suivi photos invités</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -104,7 +104,7 @@
   }
   .photo-picker{
     width:44px; height:44px;
-    border-radius:50%;
+    border-radius:12px;
     border:1px dashed var(--line);
     background: var(--bg-raised);
     display:flex; align-items:center; justify-content:center;
@@ -195,24 +195,37 @@
   }
   .card.done{ border-color: rgba(143,168,133,0.45); }
 
-  .ring-wrap{ position:relative; width:88px; height:88px; flex-shrink:0; }
-  .ring-wrap svg{ width:88px; height:88px; transform: rotate(-90deg); position:absolute; top:0; left:0; }
-  .ring-bg{ fill:none; stroke: var(--line); stroke-width:5; }
-  .ring-fg{ fill:none; stroke: var(--gold); stroke-width:5; stroke-linecap:round; transition: stroke-dashoffset .25s ease; }
-  .card.done .ring-fg{ stroke: var(--sage); }
-  .initials{
-    position:absolute; inset:7px;
-    border-radius:50%;
+  .photo-frame{ position:relative; width:88px; flex-shrink:0; }
+  .photo-square{
+    width:88px; height:88px;
+    border-radius:16px;
+    overflow:hidden;
+    background: var(--bg-raised);
+    border: 2px solid var(--line);
     display:flex; align-items:center; justify-content:center;
     font-family:'Fraunces',serif;
-    font-size:24px;
+    font-size:26px;
     color: var(--ink);
-    background: var(--bg-raised);
+    cursor:pointer;
+  }
+  .card.done .photo-square{ border-color: var(--sage); }
+  .photo-square img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .photo-progress{
+    margin-top:6px;
+    height:4px;
+    border-radius:3px;
+    background: var(--line);
     overflow:hidden;
   }
-  .initials img{ width:100%; height:100%; object-fit:cover; }
+  .photo-progress-fill{
+    height:100%;
+    background: var(--gold);
+    border-radius:3px;
+    transition: width .25s ease;
+  }
+  .card.done .photo-progress-fill{ background: var(--sage); }
   .photo-edit-badge{
-    position:absolute; bottom:2px; right:2px;
+    position:absolute; bottom:-6px; right:-6px;
     width:24px; height:24px;
     border-radius:50%;
     background: var(--gold);
@@ -386,8 +399,8 @@
 <div class="wrap">
 
   <header>
-    <div class="eyebrow">Reportage du jour</div>
-    <h1>Liste de prises</h1>
+    <div class="eyebrow">Suivi photos — invités clés</div>
+    <h1>Fokus</h1>
     <div class="subline">Comptez les photos prises de chaque invité clé, avec leur visage sous les yeux pour les repérer au cocktail.</div>
     <div class="subline" style="margin-top:8px;">Espace : <b id="spaceIdDisplay" style="color:var(--gold);"></b> — <button type="button" class="ghost-btn" id="switchSpaceBtn" style="font-size:12.5px;">changer d'espace</button></div>
   </header>
@@ -457,6 +470,13 @@
     <span class="save-note" id="saveNote"></span>
   </footer>
 
+  <div style="margin-top:22px; text-align:center; font-size:11.5px; color:var(--ink-dim); line-height:1.7;">
+    Fokus — créé par <strong style="color:var(--ink);">Martin Tramond</strong>
+    · <a href="https://www.instagram.com/martintram/" target="_blank" rel="noopener" style="color:var(--gold); text-decoration:none;">Instagram</a>
+    <br>
+    © 2026 Martin Tramond. Tous droits réservés. Outil mis à disposition gratuitement pour un usage personnel ; toute copie, redistribution ou exploitation commerciale, y compris la création d'une version dérivée, est interdite sans autorisation écrite préalable.
+  </div>
+
 </div>
 
 <input type="file" accept="image/*" class="hidden-input" id="guestPhotoInput">
@@ -469,6 +489,13 @@
       <button type="button" class="btn-plain" id="confirmCancelBtn">Annuler</button>
       <button type="button" class="btn-add" id="confirmOkBtn" style="height:40px;">Confirmer</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="photoLightbox">
+  <div class="modal" style="max-width:460px; padding:14px; text-align:center;">
+    <img id="lightboxImg" style="width:100%; border-radius:14px; display:block;" alt="">
+    <button type="button" class="btn-plain" id="lightboxCloseBtn" style="margin-top:14px;">Fermer</button>
   </div>
 </div>
 
@@ -685,22 +712,16 @@
     visible.forEach(g => {
       const isDone = g.count >= g.target;
       const pct = Math.min(1, g.count / g.target);
-      const r = 38, circumference = 2*Math.PI*r;
-      const offset = circumference * (1 - pct);
+      const pctPercent = Math.round(pct * 100);
 
       const card = document.createElement('div');
       card.className = 'card' + (isDone ? ' done' : '');
       card.innerHTML = `
-        <div class="ring-wrap">
-          <svg viewBox="0 0 88 88">
-            <circle class="ring-bg" cx="44" cy="44" r="${r}"></circle>
-            <circle class="ring-fg" cx="44" cy="44" r="${r}"
-              stroke-dasharray="${circumference}"
-              stroke-dashoffset="${offset}"></circle>
-          </svg>
-          <div class="initials" data-action="editphoto" data-id="${g.id}">
+        <div class="photo-frame">
+          <div class="photo-square" data-action="${g.photo ? 'viewphoto' : 'editphoto'}" data-id="${g.id}">
             ${g.photo ? `<img src="${g.photo}" alt="">` : initials(g.name)}
           </div>
+          <div class="photo-progress"><div class="photo-progress-fill" style="width:${pctPercent}%;"></div></div>
           <div class="photo-edit-badge" data-action="editphoto" data-id="${g.id}">✎</div>
         </div>
         <div class="info">
@@ -741,7 +762,22 @@
     } else if(action === 'editphoto'){
       pendingPhotoTargetId = id;
       guestPhotoInput.click();
+    } else if(action === 'viewphoto'){
+      if(g.photo) openLightbox(g.photo);
     }
+  });
+
+  const photoLightbox = document.getElementById('photoLightbox');
+  const lightboxImg = document.getElementById('lightboxImg');
+  const lightboxCloseBtn = document.getElementById('lightboxCloseBtn');
+
+  function openLightbox(src){
+    lightboxImg.src = src;
+    photoLightbox.classList.add('open');
+  }
+  lightboxCloseBtn.addEventListener('click', () => photoLightbox.classList.remove('open'));
+  photoLightbox.addEventListener('click', (e) => {
+    if(e.target === photoLightbox) photoLightbox.classList.remove('open');
   });
 
   listEl.addEventListener('change', function(e){
@@ -772,7 +808,7 @@
     if(!file || !pendingPhotoTargetId) return;
     try{
       const img = await loadImageFromFile(file);
-      const dataURL = imageToDataURL(img, 260, 0.78);
+      const dataURL = imageToDataURL(img, 420, 0.8);
       if(pendingPhotoTargetId === 'new'){
         document.getElementById('newPhotoPicker').dataset.pendingPhoto = dataURL;
         document.getElementById('newPhotoPicker').innerHTML = `<img src="${dataURL}" alt="">`;
@@ -921,7 +957,7 @@
     const sx = x / dispScale, sy = y / dispScale;
     const sw = w / dispScale, sh = h / dispScale;
 
-    const maxDim = 220;
+    const maxDim = 380;
     const scale = Math.min(1, maxDim / Math.max(sw, sh));
     const outW = Math.max(1, Math.round(sw * scale));
     const outH = Math.max(1, Math.round(sh * scale));
