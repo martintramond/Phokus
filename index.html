@@ -389,7 +389,23 @@
     <div class="eyebrow">Reportage du jour</div>
     <h1>Liste de prises</h1>
     <div class="subline">Comptez les photos prises de chaque invité clé, avec leur visage sous les yeux pour les repérer au cocktail.</div>
+    <div class="subline" style="margin-top:8px;">Espace : <b id="spaceIdDisplay" style="color:var(--gold);"></b> — <button type="button" class="ghost-btn" id="switchSpaceBtn" style="font-size:12.5px;">changer d'espace</button></div>
   </header>
+
+  <div class="modal-overlay" id="spaceModal">
+    <div class="modal" style="max-width:420px;">
+      <h2 id="spaceModalTitle">Ton identifiant</h2>
+      <p class="hint">Choisis un identifiant court (ex. les 3 premières lettres de ton prénom + 3 chiffres, comme <b>MAR042</b>). Il donne accès à ton propre espace, séparé de celui des autres photographes. Retape le même identifiant pour retrouver ton espace sur un autre appareil.</p>
+      <form id="spaceForm">
+        <input type="text" id="spaceIdInput" placeholder="ex. MAR042" maxlength="20" autocapitalize="characters" style="width:100%; background: var(--bg-raised); border:1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 12px 14px; font-size:15px; margin-bottom:14px; font-family:'Inter',sans-serif;" required>
+        <div class="modal-footer">
+          <button type="button" class="btn-plain" id="spaceCancelBtn" style="display:none;">Annuler</button>
+          <button type="submit" class="btn-add" style="height:44px;">Valider</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
 
   <div class="stats">
     <div class="stat">
@@ -541,10 +557,18 @@
   const SUPABASE_KEY = 'sb_publishable_pUfTlOTRbI6zAu7rG46guA_PNcyVeb1';
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   let saveTimer = null;
+  const SPACE_KEY = 'photographer_space_id';
+  let spaceId = localStorage.getItem(SPACE_KEY) || null;
+
+  function normalizeSpaceId(v){
+    return v.trim().toUpperCase().replace(/\s+/g, '');
+  }
 
   async function loadGuests(){
+    if(!spaceId){ guests = []; render(); return; }
+    document.getElementById('spaceIdDisplay').textContent = spaceId;
     try{
-      const { data, error } = await sb.from('app_state').select('data').eq('id', 1).single();
+      const { data, error } = await sb.from('app_state').select('data').eq('id', spaceId).maybeSingle();
       guests = (!error && data && Array.isArray(data.data)) ? data.data : [];
     }catch(e){
       guests = [];
@@ -553,19 +577,56 @@
   }
 
   function saveGuests(){
+    if(!spaceId) return;
     saveNote.textContent = 'Enregistrement…';
     clearTimeout(saveTimer);
     saveTimer = setTimeout(async () => {
       try{
         const { error } = await sb.from('app_state')
-          .update({ data: guests, updated_at: new Date().toISOString() })
-          .eq('id', 1);
+          .upsert({ id: spaceId, data: guests, updated_at: new Date().toISOString() }, { onConflict: 'id' });
         saveNote.textContent = error ? "Échec de l'enregistrement" : 'Enregistré';
       }catch(e){
         saveNote.textContent = "Échec de l'enregistrement";
       }
       setTimeout(()=>{ if(saveNote.textContent==='Enregistré') saveNote.textContent=''; }, 1200);
     }, 350);
+  }
+
+  // ---- Space (identifier) modal ----
+  const spaceModal = document.getElementById('spaceModal');
+  const spaceForm = document.getElementById('spaceForm');
+  const spaceIdInput = document.getElementById('spaceIdInput');
+  const spaceCancelBtn = document.getElementById('spaceCancelBtn');
+
+  function openSpaceModal(allowCancel){
+    spaceIdInput.value = spaceId || '';
+    spaceCancelBtn.style.display = allowCancel ? 'inline-block' : 'none';
+    spaceModal.classList.add('open');
+    setTimeout(()=> spaceIdInput.focus(), 50);
+  }
+
+  spaceForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    const v = normalizeSpaceId(spaceIdInput.value);
+    if(v.length < 3) return;
+    spaceId = v;
+    localStorage.setItem(SPACE_KEY, spaceId);
+    spaceModal.classList.remove('open');
+    loadGuests();
+  });
+
+  spaceCancelBtn.addEventListener('click', function(){
+    spaceModal.classList.remove('open');
+  });
+
+  document.getElementById('switchSpaceBtn').addEventListener('click', function(){
+    openSpaceModal(true);
+  });
+
+  if(!spaceId){
+    openSpaceModal(false);
+  } else {
+    document.getElementById('spaceIdDisplay').textContent = spaceId;
   }
 
   function escapeHtml(str){
