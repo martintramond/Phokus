@@ -414,12 +414,13 @@
   <div class="modal-overlay" id="spaceModal">
     <div class="modal" style="max-width:420px;">
       <h2 id="spaceModalTitle">Ton identifiant</h2>
-      <p class="hint">Choisis un identifiant court (ex. les 3 premières lettres de ton prénom + 3 chiffres, comme <b>MAR042</b>). Il donne accès à ton propre espace, séparé de celui des autres photographes. Retape le même identifiant pour retrouver ton espace sur un autre appareil.</p>
+      <p class="hint">Entre l'identifiant que Martin t'a donné (ex. <b>MAR042</b>). Il donne accès à ton propre espace, séparé de celui des autres photographes. Retape le même identifiant pour le retrouver sur un autre appareil.</p>
       <form id="spaceForm">
-        <input type="text" id="spaceIdInput" placeholder="ex. MAR042" maxlength="20" autocapitalize="characters" style="width:100%; background: var(--bg-raised); border:1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 12px 14px; font-size:15px; margin-bottom:14px; font-family:'Inter',sans-serif;" required>
+        <input type="text" id="spaceIdInput" placeholder="ex. MAR042" maxlength="20" autocapitalize="characters" style="width:100%; background: var(--bg-raised); border:1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 12px 14px; font-size:15px; margin-bottom:8px; font-family:'Inter',sans-serif;" required>
+        <div id="spaceFormError" style="min-height:18px; color:var(--danger); font-size:12.5px; margin-bottom:6px;"></div>
         <div class="modal-footer">
           <button type="button" class="btn-plain" id="spaceCancelBtn" style="display:none;">Annuler</button>
-          <button type="submit" class="btn-add" style="height:44px;">Valider</button>
+          <button type="submit" class="btn-add" id="spaceSubmitBtn" style="height:44px;">Valider</button>
         </div>
       </form>
     </div>
@@ -630,18 +631,49 @@
   const spaceForm = document.getElementById('spaceForm');
   const spaceIdInput = document.getElementById('spaceIdInput');
   const spaceCancelBtn = document.getElementById('spaceCancelBtn');
+  const spaceFormError = document.getElementById('spaceFormError');
+  const spaceSubmitBtn = document.getElementById('spaceSubmitBtn');
 
   function openSpaceModal(allowCancel){
     spaceIdInput.value = spaceId || '';
+    spaceFormError.textContent = '';
     spaceCancelBtn.style.display = allowCancel ? 'inline-block' : 'none';
     spaceModal.classList.add('open');
     setTimeout(()=> spaceIdInput.focus(), 50);
   }
 
-  spaceForm.addEventListener('submit', function(e){
+  spaceForm.addEventListener('submit', async function(e){
     e.preventDefault();
     const v = normalizeSpaceId(spaceIdInput.value);
     if(v.length < 3) return;
+
+    spaceFormError.style.color = 'var(--ink-dim)';
+    spaceFormError.textContent = 'Vérification…';
+    spaceSubmitBtn.disabled = true;
+
+    try{
+      const { data, error } = await sb.from('allowed_spaces').select('id').eq('id', v).maybeSingle();
+      if(error){
+        spaceFormError.style.color = 'var(--danger)';
+        spaceFormError.textContent = "Impossible de vérifier l'identifiant, réessaie.";
+        spaceSubmitBtn.disabled = false;
+        return;
+      }
+      if(!data){
+        spaceFormError.style.color = 'var(--danger)';
+        spaceFormError.textContent = "Identifiant non reconnu — demande à Martin de te l'ajouter.";
+        spaceSubmitBtn.disabled = false;
+        return;
+      }
+    }catch(err){
+      spaceFormError.style.color = 'var(--danger)';
+      spaceFormError.textContent = "Connexion impossible, réessaie.";
+      spaceSubmitBtn.disabled = false;
+      return;
+    }
+
+    spaceSubmitBtn.disabled = false;
+    spaceFormError.textContent = '';
     spaceId = v;
     localStorage.setItem(SPACE_KEY, spaceId);
     spaceModal.classList.remove('open');
