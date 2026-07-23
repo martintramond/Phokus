@@ -40,6 +40,8 @@
   header{
     display:flex;
     flex-direction:column;
+    align-items:center;
+    text-align:center;
     gap:6px;
     margin-bottom:22px;
     padding-bottom:18px;
@@ -55,7 +57,7 @@
   h1{
     font-family:'Fraunces', serif;
     font-weight:500;
-    font-size: 30px;
+    font-size: 48px;
     margin:0;
     line-height:1.15;
   }
@@ -396,7 +398,7 @@
   .hidden-input{ display:none; }
 
   @media (max-width:400px){
-    h1{ font-size:26px; }
+    h1{ font-size:36px; }
     .stats{ gap:10px; }
   }
 </style>
@@ -405,7 +407,6 @@
 <div class="wrap">
 
   <header>
-    <div class="eyebrow">Suivi photos — invités clés</div>
     <h1>Phokus</h1>
     <div class="subline">Comptez les photos prises de chaque invité clé, avec leur visage sous les yeux pour les repérer au cocktail.</div>
     <div class="subline" style="margin-top:8px;">Espace : <b id="spaceIdDisplay" style="color:var(--gold);"></b> — <button type="button" class="ghost-btn" id="switchSpaceBtn" style="font-size:12.5px;">changer d'espace</button></div>
